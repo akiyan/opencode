@@ -1113,7 +1113,7 @@ test("preserves sibling catalogs through location preload, branch, shell, and we
       if (pathname === "/api/project") return Response.json([])
       if (pathname === "/api/location") return Response.json(location)
       if (pathname === "/api/vcs")
-        return Response.json({ location, data: { branch: { current: branch, default: "main" } } })
+        return Response.json({ location, data: { repository: "akiyan/opencode", branch: { current: branch, default: "main" } } })
       if (pathname === "/api/reference")
         return Response.json({
           location,
@@ -1155,6 +1155,7 @@ test("preserves sibling catalogs through location preload, branch, shell, and we
     emit({ type: "shell.created", location, data: { info: shell } })
     expect(setup.data.shell.get(shell.id)).toMatchObject(shell)
     const first = setup.data.shell.get(shell.id)
+    emit({ type: "vcs.branch.updated", location, data: { branch: "main" } })
     await Promise.all([setup.data.location.reference.sync(), setup.data.location.vcs.sync()])
     const references = setup.data.location.reference.list()
     expect(references?.map((reference) => [reference.name, reference.path])).toEqual([["docs", "/docs"]])
@@ -1164,6 +1165,7 @@ test("preserves sibling catalogs through location preload, branch, shell, and we
     emit({ type: "vcs.branch.updated", location, data: { branch: "feature" } })
     await wait(() => setup.data.location.vcs.info()?.branch.current === "feature")
     expect(setup.data.location.vcs.info()?.branch).toEqual({ current: "feature", default: "main" })
+    expect(setup.data.location.vcs.info()?.repository).toBe("akiyan/opencode")
     expect(setup.data.location.reference.list()).toBe(references)
     emit({ type: "shell.created", location, data: { info: { ...shell, id: "sh_second" } } })
     expect(setup.data.shell.list().map((shell) => shell.id)).toEqual(["sh_first", "sh_second"])
@@ -1182,6 +1184,7 @@ test("preserves sibling catalogs through location preload, branch, shell, and we
     expect(setup.data.location.reference.list()).toBe(references)
     expect(setup.data.shell.get(shell.id)).toBe(first)
     expect(setup.data.location.vcs.info()?.branch).toEqual({ current: "feature", default: "main" })
+    expect(setup.data.location.vcs.info()?.repository).toBe("akiyan/opencode")
     expect(requests.toSorted()).toEqual([
       "/api/location",
       "/api/project",

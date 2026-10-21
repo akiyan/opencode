@@ -384,6 +384,12 @@ const Group = HttpApiGroup.make("mock")
     }),
   )
   .add(
+    HttpApiEndpoint.get("sessionComposerStats", "/api/session/:sessionID/composer-stats", {
+      params: SessionParams,
+      success: Json,
+    }),
+  )
+  .add(
     HttpApiEndpoint.get("sessionGet", "/api/session/:sessionID", {
       params: SessionParams,
       success: Json,

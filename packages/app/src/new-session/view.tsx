@@ -17,6 +17,7 @@ import {
 } from "@opencode/ui/project-avatar"
 import { Schema } from "effect"
 import { createPresence } from "@/runtime/presence"
+import { SessionComposerStats } from "@/session/composer/stats"
 import { Composer } from "@/composer/composer"
 import { ComposerDropzone } from "@/composer/dropzone"
 import type { ComposerModel } from "@/composer/model"
@@ -73,6 +74,11 @@ export function NewSessionView(props: {
   )
 
   const settings = useSettings()
+  const workspaceLocation = useWorkspaceLocation()
+  const directory = () => {
+    const selected = props.workspace.selection.value()
+    return selected === "main" || selected === "create" ? workspaceLocation().directory : selected
+  }
 
   const [wordmark, setWordmark] = createStore<WordmarkState>({ mode: "flat", game: false })
 
@@ -116,6 +122,7 @@ export function NewSessionView(props: {
               <div data-slot="new-session-composer" class="flex flex-col gap-1">
                 <div class="relative z-10">
                   <Composer model={props.composer} />
+                  <SessionComposerStats directory={directory()} />
                 </div>
                 <Show when={props.project.selected()}>
                   {(project) => (
@@ -377,7 +384,9 @@ function NewSessionLocation(props: {
                       size="small"
                       class="shrink-0 text-v2-icon-icon-muted"
                     />
-                    <span class="min-w-0 truncate">{worktree() ?? language.t("session.new.workspace.triggerLocal")}</span>
+                    <span class="min-w-0 truncate">
+                      {worktree() ?? language.t("session.new.workspace.triggerLocal")}
+                    </span>
                     <Show when={props.onboarding}>
                       <span
                         data-slot="workspace-onboarding-dot"
