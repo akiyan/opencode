@@ -377,7 +377,7 @@ function TurnRail(props: TurnNavigatorProps & { index?: Map<string, string>; roo
       <div
         ref={card}
         data-slot="session-turn-navigator-preview"
-        class="pointer-events-none invisible absolute start-12 top-0 w-[384px] max-w-[calc(100cqw-4rem)] rounded-lg bg-v2-background-bg-base p-3 opacity-0"
+        class="pointer-events-none invisible absolute start-12 top-0 w-[384px] max-w-[calc(100%-4rem)] rounded-lg bg-v2-background-bg-base p-3 opacity-0"
         style={{ "box-shadow": "var(--v2-elevation-raised)" }}
       >
         <Show when={preview()}>
