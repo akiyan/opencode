@@ -7,6 +7,7 @@ import { Money } from "@opencode/schema/money"
 import { Project } from "@opencode/schema/project"
 import { Provider } from "@opencode/schema/provider"
 import { Event } from "@opencode/schema/event"
+import { Session } from "@opencode/schema/session"
 import { SessionEvent } from "@opencode/schema/session-event"
 import { ToolMode } from "@opencode/schema/session-stats"
 import { TokenUsage } from "@opencode/schema/token-usage"
@@ -434,3 +435,46 @@ function median(values: number[]) {
   const middle = Math.floor(sorted.length / 2)
   return sorted.length % 2 === 0 ? (sorted[middle - 1] + sorted[middle]) / 2 : sorted[middle]
 }
+
+/** Use projected timings; production does not retain the event log by default. */
+export const composer = Effect.fn("SessionStats.composer")(function* (sessionID: Session.ID) {
+  const db = (yield* Database.Service).db
+  const row = yield* db
+    .get<{ turns: number; steps: number; output: number; duration: number }>(
+      sql`
+    WITH projected_output AS (
+      SELECT message.id AS message_id, json_extract(message.data, '$.content[0].time.created') AS started
+      FROM ${SessionMessageTable} AS message
+      WHERE message.session_id = ${sessionID} AND message.type = 'assistant'
+        AND json_extract(message.data, '$.content[0].type') IN ('reasoning', 'tool')
+        AND json_extract(message.data, '$.content[0].time.created') >= json_extract(message.data, '$.time.created')
+    ), measured AS (
+      SELECT message.type,
+        coalesce(json_extract(message.data, '$.tokens.output'), 0)
+          + coalesce(json_extract(message.data, '$.tokens.reasoning'), 0) AS output,
+        CASE WHEN message.type = 'assistant'
+          AND json_extract(message.data, '$.tokens') IS NOT NULL
+          AND json_extract(message.data, '$.error') IS NULL
+          AND json_extract(message.data, '$.retry') IS NULL
+          AND json_extract(message.data, '$.time.streamed') > coalesce(
+            json_extract(message.data, '$.time.firstOutput'), parts.started)
+        THEN json_extract(message.data, '$.time.streamed') - coalesce(
+          json_extract(message.data, '$.time.firstOutput'), parts.started) END AS duration
+      FROM ${SessionMessageTable} AS message
+      LEFT JOIN projected_output AS parts ON parts.message_id = message.id
+      WHERE message.session_id = ${sessionID}
+    )
+    SELECT count(*) FILTER (WHERE type = 'user') AS turns,
+      count(*) FILTER (WHERE type = 'assistant') AS steps,
+      coalesce(sum(output) FILTER (WHERE duration IS NOT NULL), 0) AS output,
+      coalesce(sum(duration), 0) AS duration
+    FROM measured
+  `,
+    )
+    .pipe(Effect.orDie)
+  return {
+    turns: row?.turns ?? 0,
+    steps: row?.steps ?? 0,
+    tokensPerSecond: row && row.duration > 0 ? (row.output * 1_000) / row.duration : null,
+  }
+})

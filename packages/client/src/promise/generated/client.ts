@@ -27,6 +27,8 @@ import type {
   SessionExportInput,
   SessionExportOutput,
   SessionActiveOutput,
+  SessionComposerStatsInput,
+  SessionComposerStatsOutput,
   SessionGetInput,
   SessionGetOutput,
   SessionRemoveInput,
@@ -635,6 +637,17 @@ export function make(options: ClientOptions) {
             path: `/api/session/active`,
             successStatus: 200,
             declaredStatuses: [400, 401],
+            empty: false,
+          },
+          requestOptions,
+        ).then((value) => value.data),
+      composerStats: (input: SessionComposerStatsInput, requestOptions?: RequestOptions) =>
+        request<{ readonly data: SessionComposerStatsOutput }>(
+          {
+            method: "GET",
+            path: `/api/session/${encodeURIComponent(input.sessionID)}/composer-stats`,
+            successStatus: 200,
+            declaredStatuses: [400, 401, 404],
             empty: false,
           },
           requestOptions,

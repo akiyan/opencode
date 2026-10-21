@@ -1,6 +1,20 @@
 import { DESKTOP_NATIVE_ENGLISH } from "./desktop-native"
 
 export const dict = {
+  "session.stats.turns.one": "{{count}} turn",
+  "session.stats.turns.other": "{{count}} turns",
+  "session.stats.steps.one": "{{count}} step",
+  "session.stats.steps.other": "{{count}} steps",
+  "session.stats.speed": "{{value}} tok/s",
+  "session.stats.tokens": "{{value}} tok",
+  "session.stats.cache": "Cache hit {{value}}",
+  "session.stats.activityDescription":
+    "Delivered user prompts and logical LLM calls in this session, including retained fork history. Queued prompts and subagents are excluded.",
+  "session.stats.speedDescription":
+    "Output and reasoning tokens divided by measured generation time, excluding first-output wait and tool execution. Retried, failed, and untimed calls are excluded.",
+  "session.stats.usageDescription":
+    "Cumulative session usage, including reasoning and cached tokens. Cache hit is cache reads divided by all input tokens. This is not context occupancy.",
+
   ...DESKTOP_NATIVE_ENGLISH,
   "session.location.unavailable": "Session location unavailable",
   "session.location.description": "Choose another directory to continue this session.",
