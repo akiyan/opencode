@@ -229,6 +229,16 @@ export type SessionExportOperation<E = never> = (input: SessionExportInput) => E
 export type SessionActiveOutput = { readonly [x: Session.ID]: { readonly type: "running" } }
 export type SessionActiveOperation<E = never> = () => Effect.Effect<SessionActiveOutput, E>
 
+export type SessionComposerStatsInput = { readonly sessionID: Session.ID }
+export type SessionComposerStatsOutput = {
+  readonly turns: number
+  readonly steps: number
+  readonly tokensPerSecond: number | null
+}
+export type SessionComposerStatsOperation<E = never> = (
+  input: SessionComposerStatsInput,
+) => Effect.Effect<SessionComposerStatsOutput, E>
+
 export type SessionGetInput = { readonly sessionID: Session.ID }
 export type SessionGetOutput = Session.Info
 export type SessionGetOperation<E = never> = (input: SessionGetInput) => Effect.Effect<SessionGetOutput, E>
@@ -1319,6 +1329,7 @@ export interface SessionApi<E = never> {
   readonly import: SessionImportOperation<E>
   readonly export: SessionExportOperation<E>
   readonly active: SessionActiveOperation<E>
+  readonly composerStats: SessionComposerStatsOperation<E>
   readonly get: SessionGetOperation<E>
   readonly remove: SessionRemoveOperation<E>
   readonly fork: SessionForkOperation<E>

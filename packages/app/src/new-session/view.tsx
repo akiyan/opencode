@@ -4,6 +4,7 @@ import { Icon } from "@opencode/ui/icon"
 import { Show, createMemo, createSignal } from "solid-js"
 import { Schema } from "effect"
 import createPresence from "solid-presence"
+import { SessionComposerStats } from "@/session/composer/stats"
 import { Composer } from "@/composer/composer"
 import { ComposerDropzone } from "@/composer/dropzone"
 import type { ComposerModel } from "@/composer/model"
@@ -45,6 +46,12 @@ export function NewSessionView(props: {
     { used: false },
   )
 
+  const location = useWorkspaceLocation()
+  const directory = () => {
+    const selected = props.workspace.selection.value()
+    return selected === "main" || selected === "create" ? location().directory : selected
+  }
+
   const select = (value: string) => {
     props.workspace.selection.set(value)
 
@@ -65,7 +72,10 @@ export function NewSessionView(props: {
           <div class={NEW_SESSION_CONTENT_WIDTH}>
             <NewSessionWordmark />
             <div class="mt-8 flex flex-col gap-8">
-              <Composer model={props.composer} />
+              <div>
+                <Composer model={props.composer} />
+                <SessionComposerStats directory={directory()} />
+              </div>
               <Show when={props.project.empty()}>
                 <PromptProjectAddButton controller={props.project} />
               </Show>

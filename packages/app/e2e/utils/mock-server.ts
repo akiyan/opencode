@@ -76,6 +76,8 @@ export interface MockServerConfig {
     cursor?: string
   }
   vcs?: { current: string; default: string }
+  repository?: string
+  composerStats?: { turns: number; steps: number; tokensPerSecond: number | null }
   // Initializes the mock project's VCS; without a handler this mutation answers 501.
   onVcsInit?: (input: { directory: string; provider?: string }) => void
   vcsDiff?: unknown[] | ((input: { mode?: string }) => unknown[])
@@ -1005,7 +1007,7 @@ function mockHandlers(
         vcs: () =>
           Effect.succeed({
             location: location(config),
-            data: { branch: config.vcs ?? { current: "main", default: "main" } },
+            data: { branch: config.vcs ?? { current: "main", default: "main" }, repository: config.repository },
           }),
         vcsInit: (ctx) => {
           if (!config.onVcsInit) return unsupported("initialize VCS", "onVcsInit")
@@ -1211,6 +1213,8 @@ function mockHandlers(
               ),
             ),
           }),
+        sessionComposerStats: () =>
+          Effect.succeed({ data: config.composerStats ?? { turns: 0, steps: 0, tokensPerSecond: null } }),
         sessionGet: (ctx) =>
           Effect.suspend(() => {
             config.onSession?.(ctx.params.sessionID)

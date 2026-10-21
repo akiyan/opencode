@@ -28,6 +28,7 @@ import type { SessionTimelineInteraction } from "../timeline/interaction"
 import { createSessionRevert } from "../revert"
 import { SessionComposerRegion } from "./session-composer-region"
 import { createSessionComposerController, type SessionComposerController } from "./controller"
+import { SessionComposerStats } from "./stats"
 import { SessionQueuePanel } from "./queue-panel"
 import { resolveSessionComposerSelection } from "./selection"
 import { createSessionRequestModel } from "../requests/model"
@@ -360,6 +361,7 @@ export function ActiveSessionComposerRegion(props: {
                   readOnly={props.model.queue.undoing()}
                   suggestionBoundary={props.suggestionBoundary}
                 />
+                <SessionComposerStats sessionID={props.session.identity.sessionID() ?? ""} />
               </div>
             </div>
           }

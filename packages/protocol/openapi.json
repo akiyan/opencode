@@ -1516,6 +1516,74 @@
         "summary": "List active sessions"
       }
     },
+    "/api/session/{sessionID}/composer-stats": {
+      "get": {
+        "tags": ["session"],
+        "operationId": "session.composerStats",
+        "parameters": [
+          {
+            "name": "sessionID",
+            "in": "path",
+            "schema": {
+              "$ref": "#/components/schemas/Session.ID"
+            },
+            "required": true
+          }
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/SessionStats.Composer"
+                    }
+                  },
+                  "required": ["data"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "InvalidRequestError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvalidRequestErrorEncoded"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "UnauthorizedError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedErrorEncoded"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "SessionNotFoundError",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionNotFoundErrorEncoded"
+                }
+              }
+            }
+          }
+        },
+        "description": "Count the complete projected transcript and measure output speed from durable stream timings.",
+        "summary": "Get composer session statistics"
+      }
+    },
     "/api/session/{sessionID}": {
       "get": {
         "tags": ["session"],
@@ -19366,6 +19434,9 @@
               "created": {
                 "type": "number"
               },
+              "firstOutput": {
+                "type": "number"
+              },
               "streamed": {
                 "type": "number"
               },
@@ -20393,6 +20464,31 @@
         "required": ["date", "steps"],
         "additionalProperties": false
       },
+      "SessionStats.Composer": {
+        "type": "object",
+        "properties": {
+          "turns": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "steps": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "tokensPerSecond": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["turns", "steps", "tokensPerSecond"],
+        "additionalProperties": false
+      },
       "SessionStats.Info": {
         "type": "object",
         "properties": {
@@ -20959,6 +21055,9 @@
         "type": "object",
         "properties": {
           "provider": {
+            "type": "string"
+          },
+          "repository": {
             "type": "string"
           },
           "branch": {
