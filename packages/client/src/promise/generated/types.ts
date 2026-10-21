@@ -118,6 +118,8 @@ export type SessionStructuredError = {
 
 export type SessionActive = { type: "running" }
 
+export type SessionStatsComposer = { turns: number; steps: number; tokensPerSecond: number | null }
+
 export type SessionInboxDelivery = "steer" | "queue"
 
 export type SessionInboxSyntheticPayload = { text: string; description?: string; metadata?: { [x: string]: JsonValue } }
@@ -850,7 +852,7 @@ export type FormMultiselectField1 = {
 
 export type FormAnswer1 = { [x: string]: FormValue1 }
 
-export type VcsInfo = { provider?: string; branch: VcsBranch }
+export type VcsInfo = { provider?: string; repository?: string; branch: VcsBranch }
 
 export type WebSearchProvider = { id: WebSearchID; name: string }
 
@@ -3401,6 +3403,10 @@ export type SessionExportInput = {
 export type SessionExportOutput = { data: SessionTransferData }["data"]
 
 export type SessionActiveOutput = { data: { [x: SessionID]: SessionActive } }["data"]
+
+export type SessionComposerStatsInput = { readonly sessionID: { readonly sessionID: string }["sessionID"] }
+
+export type SessionComposerStatsOutput = { data: SessionStatsComposer }["data"]
 
 export type SessionGetInput = { readonly sessionID: { readonly sessionID: string }["sessionID"] }
 

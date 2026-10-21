@@ -681,3 +681,57 @@ test("shows thinking on hover or a non-default selection while preserving keyboa
   await page.keyboard.press("Tab")
   await expect(control).toHaveCSS("opacity", "0")
 })
+
+test("composer shows session totals below the prompt across reloads and narrow screens", async ({ page }, testInfo) => {
+  await openSession(page, {
+    name: "ComposerStats",
+    directory: "/home/ubuntu/men-es-crawler",
+    repository: "masayan19xx/men-es-crawler",
+    vcs: { current: "master", default: "master" },
+    composerStats: { turns: 29, steps: 549, tokensPerSecond: 59 },
+    sessions: [
+      {
+        id: "ses_composer_stats",
+        tokens: { input: 2_100_000, output: 1_800_000, reasoning: 0, cache: { read: 67_900_000, write: 0 } },
+      },
+      { id: "ses_stats_other" },
+    ],
+    seed: { locale: "ja" },
+  })
+  const stats = page.locator('[data-component="session-composer-stats"]')
+  await expect(stats).toContainText("masayan19xx/men-es-crawler:master")
+  await expect(stats).toContainText("29 ターン")
+  await expect(stats).toContainText("549 ステップ")
+  await expect(stats).toContainText("59 tok/s")
+  await expect(stats).toContainText("71.8M tok")
+  await expect(stats).toContainText("キャッシュヒット 97%")
+  const editor = page.locator('[data-component="composer-editor"]')
+  await expect(editor).toHaveText("")
+  const position = await stats.boundingBox()
+  const prompt = await editor.boundingBox()
+  expect(position!.y).toBeGreaterThan(prompt!.y + prompt!.height)
+  await page.screenshot({ path: testInfo.outputPath("composer-stats-desktop.png"), fullPage: true })
+  await page.route("**/api/session/ses_stats_other/composer-stats", (route) =>
+    route.fulfill({ json: { data: { turns: 1, steps: 2, tokensPerSecond: null } } }),
+  )
+  await page.goto(sessionHref("ses_stats_other"))
+  await expect(stats).toContainText("1 ターン")
+  await expect(stats).toContainText("2 ステップ")
+  await expect(stats).toContainText("— tok/s")
+  await expect(stats).toContainText("0 tok")
+  await expect(stats).toContainText("キャッシュヒット —")
+  await page.goto(sessionHref("ses_composer_stats"))
+  await expect(stats).toContainText("29 ターン")
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.reload()
+  await expect(stats).toContainText("71.8M tok")
+  await expect(stats).toContainText("29 ターン")
+  await expect(editor).toBeEditable()
+  expect(await stats.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
+  await page.screenshot({ path: testInfo.outputPath("composer-stats-mobile.png"), fullPage: true })
+  await page.route("**/api/session/*/composer-stats", (route) => route.fulfill({ status: 503, json: {} }))
+  await page.reload()
+  await expect(stats).toContainText("— tok/s")
+  await expect(stats).not.toContainText("29 ターン")
+  await expect(editor).toBeEditable()
+})

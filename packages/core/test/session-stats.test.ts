@@ -1,4 +1,5 @@
 import { describe, expect } from "bun:test"
+import { eq } from "drizzle-orm"
 import { Agent } from "@opencode/schema/agent"
 import { Model } from "@opencode/schema/model"
 import { Money } from "@opencode/schema/money"
@@ -34,6 +35,96 @@ const otherSessionID = Session.ID.make("ses_stats_other")
 const encodeMessage = Schema.encodeSync(SessionMessage.Info)
 
 describe("SessionStats", () => {
+  it.effect("composer counts the full transcript and weights output speed without tool or first-output wait", () =>
+    Effect.gen(function* () {
+      const db = (yield* Database.Service).db
+      const bus = yield* Bus.Service
+      yield* db
+        .insert(ProjectTable)
+        .values({ id: projectID, worktree: AbsolutePath.make("/stats"), sandboxes: [] })
+        .run()
+        .pipe(Effect.orDie)
+      yield* db
+        .insert(SessionTable)
+        .values([
+          { id: sessionID, project_id: projectID, slug: "root", directory: "/stats", version: "test" },
+          {
+            id: childID,
+            project_id: projectID,
+            parent_id: sessionID,
+            slug: "child",
+            directory: "/stats",
+            version: "test",
+          },
+        ])
+        .run()
+        .pipe(Effect.orDie)
+      expect(yield* SessionStats.composer(sessionID)).toEqual({ turns: 0, steps: 0, tokensPerSecond: null })
+      const first = assistant("msg_measured_first", 0, [])
+      const second = assistant("msg_measured_second", 0, [], "sonnet", 3)
+      const messages = [
+        {
+          ...first,
+          time: {
+            created: DateTime.makeUnsafe(0),
+            streamed: DateTime.makeUnsafe(4_000),
+            completed: DateTime.makeUnsafe(90_000),
+          },
+        },
+        {
+          ...second,
+          time: {
+            created: DateTime.makeUnsafe(0),
+            streamed: DateTime.makeUnsafe(12_000),
+            completed: DateTime.makeUnsafe(90_000),
+          },
+        },
+        assistant("msg_untimed", 0, []),
+      ]
+      yield* db
+        .insert(SessionMessageTable)
+        .values([
+          messageRow(
+            sessionID,
+            1,
+            SessionMessage.User.make({
+              id: SessionMessage.ID.make("msg_composer_user"),
+              type: "user",
+              text: "hello",
+              time: { created: DateTime.makeUnsafe(0) },
+            }),
+          ),
+          ...messages.map((message, i) => messageRow(sessionID, i + 2, message)),
+          ...Array.from({ length: 60 }, (_, i) => messageRow(sessionID, i + 5, assistant(`msg_history_${i}`, 0, []))),
+          // Forked/imported messages without local timing still contribute a step.
+          messageRow(childID, 1, assistant("msg_child_ignored", 0, [])),
+        ])
+        .run()
+        .pipe(Effect.orDie)
+      yield* TestClock.setTime(3_000)
+      yield* bus.publish(SessionEvent.Text.Started, { sessionID, assistantMessageID: first.id, ordinal: 0 })
+      yield* TestClock.setTime(5_000)
+      yield* bus.publish(SessionEvent.Reasoning.Started, { sessionID, assistantMessageID: second.id, ordinal: 0 })
+      // A second content block must not duplicate a measured step.
+      yield* TestClock.setTime(6_000)
+      yield* bus.publish(SessionEvent.Text.Started, { sessionID, assistantMessageID: second.id, ordinal: 1 })
+      expect(yield* SessionStats.composer(sessionID)).toEqual({ turns: 1, steps: 63, tokensPerSecond: 3.5 })
+      // Retry metadata invalidates timings while preserving the logical step count.
+      yield* db
+        .update(SessionMessageTable)
+        .set({
+          data: {
+            ...encodeMessage(messages[0]),
+            retry: { attempt: 1, at: 0, error: { type: "unknown", message: "retry" } },
+          },
+        })
+        .where(eq(SessionMessageTable.id, first.id))
+        .run()
+        .pipe(Effect.orDie)
+      expect(yield* SessionStats.composer(sessionID)).toEqual({ turns: 1, steps: 63, tokensPerSecond: 3 })
+    }),
+  )
+
   it.effect("aggregates activity and tool reliability without reading message payloads outside the range", () =>
     Effect.gen(function* () {
       const db = (yield* Database.Service).db

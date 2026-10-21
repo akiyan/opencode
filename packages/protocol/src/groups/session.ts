@@ -220,6 +220,19 @@ export const makeSessionGroup = <I extends HttpApiMiddleware.AnyId, S, FormI ext
       ),
     )
     .add(
+      HttpApiEndpoint.get("session.composerStats", "/api/session/:sessionID/composer-stats", {
+        params: { sessionID: Session.ID },
+        success: Schema.Struct({ data: SessionStats.Composer }),
+        error: SessionNotFoundError,
+      }).annotateMerge(
+        OpenApi.annotations({
+          identifier: "session.composerStats",
+          summary: "Get composer session statistics",
+          description: "Count the complete projected transcript and measure output speed from durable stream timings.",
+        }),
+      ),
+    )
+    .add(
       HttpApiEndpoint.get("session.get", "/api/session/:sessionID", {
         params: { sessionID: Session.ID },
         success: Schema.Struct({ data: PublicSessionInfo }),
