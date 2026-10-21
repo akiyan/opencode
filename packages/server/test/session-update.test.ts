@@ -64,3 +64,35 @@ it.live("archives and unarchives a session through PATCH", () =>
     expect(yield* listed(false)).toContain(created.data.id)
   }).pipe(Effect.scoped),
 )
+
+it.live("composer statistics require an existing session", () =>
+  Effect.gen(function* () {
+    const handler = yield* ServerFetch.make({
+      app: { version: "test" },
+      database: { path: ":memory:" },
+      fs: { filewatcher: false },
+      models: { fetch: false },
+    })
+    const missing = yield* Effect.promise(() =>
+      handler(new Request("http://opencode.local/api/session/ses_missing/composer-stats")),
+    )
+    expect(missing.status).toBe(404)
+    const created = yield* Effect.promise(() =>
+      handler(
+        new Request("http://opencode.local/api/session", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: "{}",
+        }),
+      ),
+    )
+    const body = Schema.decodeUnknownSync(SessionResponse)(yield* Effect.promise(() => created.json()))
+    const response = yield* Effect.promise(() =>
+      handler(new Request(`http://opencode.local/api/session/${body.data.id}/composer-stats`)),
+    )
+    expect(response.status).toBe(200)
+    expect(yield* Effect.promise(() => response.json())).toEqual({
+      data: { turns: 0, steps: 0, tokensPerSecond: null },
+    })
+  }).pipe(Effect.scoped),
+)

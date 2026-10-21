@@ -7,6 +7,7 @@ import { makeEventListener } from "@solid-primitives/event-listener"
 import { useNavigate } from "@solidjs/router"
 import { Match } from "effect"
 import { createEffect, createMemo, on, onCleanup, onMount, Show, type Accessor } from "solid-js"
+import { SessionComposerStats } from "./stats"
 import { Composer } from "@/composer/composer"
 import { VoiceComposer } from "@/voice/composer"
 import { useComposerState } from "@/composer/persistence"
@@ -666,6 +667,7 @@ export function ActiveSessionComposerRegion(props: {
                   />
                 </VoiceComposer>
               </Show>
+              <SessionComposerStats sessionID={props.session.identity.sessionID() ?? ""} />
             </div>
           }
         >

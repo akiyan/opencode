@@ -83,6 +83,8 @@ export type SessionsCursor = string
 
 export type SessionActive = { type: "running" }
 
+export type SessionStatsComposer = { turns: number; steps: number; tokensPerSecond: number | null }
+
 export type PromptBase64 = string
 
 export type PromptFileSource = { type: "inline" } | { type: "uri"; uri: string }
@@ -1044,7 +1046,7 @@ export type MachineInvite = {
   reach: Array<MachineReach | { type: "iroh" }>
 }
 
-export type VcsInfo = { provider?: string; branch: VcsBranch }
+export type VcsInfo = { provider?: string; repository?: string; branch: VcsBranch }
 
 export type WebSearchProvider = { id: WebSearchID; name: string }
 
@@ -2826,7 +2828,7 @@ export type SessionInboxInfo = SessionInboxUser | SessionInboxSynthetic | Sessio
 export type SessionMessageAssistant = {
   id: SessionMessageID
   metadata?: { [x: string]: JsonValue }
-  time: { created: number; firstToken?: number; streamed?: number; completed?: number }
+  time: { created: number; firstToken?: number; firstOutput?: number; streamed?: number; completed?: number }
   type: "assistant"
   agent: AgentID
   model: ModelRef
@@ -3509,6 +3511,10 @@ export type SessionCreateInput = {
 export type SessionCreateOutput = { data: SessionInfo }["data"]
 
 export type SessionActiveOutput = { data: { [x: SessionID]: SessionActive } }["data"]
+
+export type SessionComposerStatsInput = { readonly sessionID: string }
+
+export type SessionComposerStatsOutput = { data: SessionStatsComposer }["data"]
 
 export type SessionGetInput = { readonly sessionID: string }
 

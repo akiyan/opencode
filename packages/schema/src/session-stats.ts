@@ -66,3 +66,11 @@ export const Info = Schema.Struct({
   models: Schema.Array(ModelUsage),
 }).annotate({ identifier: "SessionStats.Info" })
 export type Info = typeof Info.Type
+
+/** Composer metrics for the complete projected transcript, independent of pagination. */
+export const Composer = Schema.Struct({
+  turns: NonNegativeInt,
+  steps: NonNegativeInt,
+  tokensPerSecond: Schema.NullOr(Schema.Finite),
+}).annotate({ identifier: "SessionStats.Composer" })
+export type Composer = typeof Composer.Type
