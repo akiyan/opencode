@@ -447,7 +447,9 @@ export function ActiveSessionComposerRegion(props: {
             <div class="relative">
               <SessionActivityChips subagents={subagents()} shells={shells()} onOpen={open} onStop={stop} />
               <SessionQueuePanel queue={props.model.queue} />
-              <div class="relative z-10">
+              {/* The container for the composer's `cqw` caps: only the composer re-evaluates as a panel beside it
+                  animates the chat's width. */}
+              <div class="@container relative z-10">
                 <Composer
                   model={props.model.composer}
                   borderUnderlay
