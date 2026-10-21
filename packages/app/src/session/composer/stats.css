@@ -1,0 +1,55 @@
+[data-component="session-composer-stats"] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 4px 4px;
+  color: var(--v2-text-text-faint);
+  font-size: 13px;
+  line-height: var(--line-height-compact, 16px);
+  font-variant-numeric: tabular-nums;
+
+  .composer-stats-location,
+  .composer-stats-group {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .composer-stats-location-text,
+  .composer-stats-values {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0 4px;
+    min-width: 0;
+  }
+
+  .composer-stats-location-text > span {
+    max-width: 100%;
+  }
+
+  .composer-stats-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px 24px;
+    max-width: 100%;
+  }
+
+  .composer-stats-icon {
+    display: block;
+    flex: 0 0 14px;
+    width: 14px;
+    height: 14px;
+    background-color: currentColor;
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+  }
+}

@@ -228,6 +228,7 @@ export function update(adapter: Adapter, event: SessionEvent.DurableEvent) {
                 draft.rawFinish = undefined
                 draft.native = undefined
                 draft.time.created = DateTime.makeUnsafe(event.data.started)
+                draft.time.firstOutput = undefined
                 draft.time.streamed = undefined
                 draft.time.completed = undefined
                 if (event.data.snapshot) draft.snapshot = { ...draft.snapshot, start: event.data.snapshot }
@@ -290,6 +291,7 @@ export function update(adapter: Adapter, event: SessionEvent.DurableEvent) {
       },
       "session.text.started": (event) => {
         return updateOwnedAssistant(event.data.assistantMessageID, (draft) => {
+          draft.time.firstOutput ??= created
           draft.content.push(castDraft(SessionMessage.AssistantText.make({ type: "text", text: "" })))
         })
       },
@@ -304,6 +306,7 @@ export function update(adapter: Adapter, event: SessionEvent.DurableEvent) {
       },
       "session.tool.input.started": (event) => {
         return updateOwnedAssistant(event.data.assistantMessageID, (draft) => {
+          draft.time.firstOutput ??= created
           draft.content.push(
             castDraft(
               SessionMessage.AssistantTool.make({
@@ -381,6 +384,7 @@ export function update(adapter: Adapter, event: SessionEvent.DurableEvent) {
       },
       "session.reasoning.started": (event) => {
         return updateOwnedAssistant(event.data.assistantMessageID, (draft) => {
+          draft.time.firstOutput ??= created
           draft.content.push(
             castDraft(
               SessionMessage.AssistantReasoning.make({

@@ -96,6 +96,29 @@ const provider = (input: Partial<VcsDefinition> = {}) =>
   }) satisfies VcsDefinition
 
 describe("Vcs", () => {
+  it.live("exposes repository paths without remote credentials and omits local remotes", () =>
+    withGit((directory) =>
+      Effect.gen(function* () {
+        const vcs = yield* Vcs.Service
+        yield* Effect.promise(() =>
+          $`git remote add origin https://user:secret@example.com/akiyan/opencode.git?token=private`
+            .cwd(directory)
+            .quiet(),
+        )
+        yield* vcs.reload()
+        expect((yield* vcs.info()).repository).toBe("akiyan/opencode")
+        yield* Effect.promise(() =>
+          $`git remote set-url origin git@example.com:group/subgroup/repo.git`.cwd(directory).quiet(),
+        )
+        yield* vcs.reload()
+        expect((yield* vcs.info()).repository).toBe("group/subgroup/repo")
+        yield* Effect.promise(() => $`git remote set-url origin /tmp/local-repository`.cwd(directory).quiet())
+        yield* vcs.reload()
+        expect((yield* vcs.info()).repository).toBeUndefined()
+      }),
+    ),
+  )
+
   it.live("routes initialization through the requested provider before a repository exists", () =>
     withTmp((directory) =>
       Effect.gen(function* () {
