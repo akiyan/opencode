@@ -15,6 +15,7 @@ import {
 } from "@opencode/ui/project-avatar"
 import { Schema } from "effect"
 import { createPresence } from "@/runtime/presence"
+import { SessionComposerStats } from "@/session/composer/stats"
 import { Composer } from "@/composer/composer"
 import { ComposerDropzone } from "@/composer/dropzone"
 import type { ComposerModel } from "@/composer/model"
@@ -71,6 +72,11 @@ export function NewSessionView(props: {
   )
 
   const settings = useSettings()
+  const location = useWorkspaceLocation()
+  const directory = () => {
+    const selected = props.workspace.selection.value()
+    return selected === "main" || selected === "create" ? location().directory : selected
+  }
 
   const [wordmark, setWordmark] = createStore<WordmarkState>({ mode: "flat", game: false })
 
@@ -106,6 +112,7 @@ export function NewSessionView(props: {
               <div data-slot="new-session-composer" class="flex flex-col gap-1">
                 <div class="relative z-10">
                   <Composer model={props.composer} />
+                  <SessionComposerStats directory={directory()} />
                 </div>
                 <Show when={props.project.selected()}>
                   {(project) => (

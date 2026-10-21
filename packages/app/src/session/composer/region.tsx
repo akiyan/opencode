@@ -5,6 +5,7 @@ import { isScrollKeyTarget, scrollKey, scrollKeyOwner } from "@opencode/ui/scrol
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { useNavigate } from "@solidjs/router"
 import { createEffect, createMemo, on, onCleanup, onMount, Show, type Accessor } from "solid-js"
+import { SessionComposerStats } from "./stats"
 import { Composer } from "@/composer/composer"
 import { VoiceComposer } from "@/voice/composer"
 import { useComposerState } from "@/composer/persistence"
@@ -526,6 +527,7 @@ export function ActiveSessionComposerRegion(props: {
                   suggestionBoundary={props.suggestionBoundary}
                 />
               </VoiceComposer>
+              <SessionComposerStats sessionID={props.session.identity.sessionID() ?? ""} />
             </div>
           }
         >

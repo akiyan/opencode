@@ -57,6 +57,19 @@ describe("normalizeProviderList", () => {
           limit: { context: 128_000, output: 8_192 },
         },
         {
+          id: "custom-model",
+          modelID: "custom-model",
+          providerID: "openai",
+          name: "Custom Model",
+          capabilities: { tools: true, input: ["text"], output: ["text"] },
+          variants: [],
+          time: { released: 0 },
+          cost: [],
+          status: "active",
+          enabled: true,
+          limit: { context: 1, output: 1 },
+        },
+        {
           id: "gpt-old",
           modelID: "gpt-old",
           providerID: "openai",
@@ -72,6 +85,9 @@ describe("normalizeProviderList", () => {
       ] as ModelListOutput["data"],
     )
 
+    // Unknown dates must remain unknown so custom models are visible in the picker.
+    expect(result.all.get("openai")?.models["custom-model"]?.release_date).toBe("")
+    expect(result.all.get("openai")?.models["gpt-5"]?.release_date).toBe("1970-01-01")
     expect(result.connected).toEqual(["openai"])
     expect(result.default).toEqual({ openai: "gpt-5" })
     expect(result.all.get("openai")?.models["gpt-old"]).toBeUndefined()
