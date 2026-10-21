@@ -112,7 +112,7 @@ export function createComposerSubmit(input: ComposerSubmitInput) {
     // A cold Location lists its agents and models only after its plugins activate, so hold the send until then.
     if (read === "loading") {
       setHeld(true)
-      const loaded = await whenLoaded(input, owner)
+      const loaded = await whenLoaded(input, owner, held)
       setHeld(false)
 
       if (loaded) await submit(event, options)
@@ -244,7 +244,12 @@ export function createComposerSubmit(input: ComposerSubmitInput) {
   return {
     submit,
     held,
-    stop: () => (input.adapter.kind === "active-session" ? input.adapter.interrupt() : Promise.resolve()),
+    stop: () => {
+      // Stopping a held send cancels it and leaves the prompt in the composer.
+      if (held()) return Promise.resolve(void setHeld(false))
+
+      return input.adapter.kind === "active-session" ? input.adapter.interrupt() : Promise.resolve()
+    },
   }
 }
 
@@ -359,8 +364,11 @@ function readSubmission(
   }
 }
 
-// Resolves false if the composer unmounts first, so a held prompt stays in the draft instead of sending.
-function whenLoaded(input: ComposerSubmitInput, owner: ReturnType<typeof getOwner>) {
+// Resolves false if the hold is stopped, the draft changes or the composer unmounts first, so the prompt stays in the
+// composer instead of sending.
+function whenLoaded(input: ComposerSubmitInput, owner: ReturnType<typeof getOwner>, held: Accessor<boolean>) {
+  const draft = JSON.stringify(input.adapter.state.current())
+
   return new Promise<boolean>((resolve) =>
     createRoot((dispose) => {
       const settle = (loaded: boolean) => {
@@ -370,6 +378,8 @@ function whenLoaded(input: ComposerSubmitInput, owner: ReturnType<typeof getOwne
 
       runWithOwner(owner, () => onCleanup(() => settle(false)))
       createEffect(() => {
+        if (!held() || JSON.stringify(input.adapter.state.current()) !== draft) return settle(false)
+
         if (!input.adapter.controls().model.loading) settle(true)
       })
     }),
