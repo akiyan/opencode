@@ -1,4 +1,16 @@
 export const dict = {
+  "session.stats.turns.other": "{{count}} ターン",
+  "session.stats.steps.other": "{{count}} ステップ",
+  "session.stats.speed": "{{value}} tok/s",
+  "session.stats.tokens": "{{value}} tok",
+  "session.stats.cache": "キャッシュヒット {{value}}",
+  "session.stats.activityDescription":
+    "このセッションで取り込まれたユーザー入力数と論理的な LLM 呼び出し数。fork から引き継いだ履歴を含み、待機中の入力とサブエージェントは除きます。",
+  "session.stats.speedDescription":
+    "計測できた生成時間に対する出力・推論トークン数。最初の出力までの待ち時間とツール実行時間を除きます。再試行・失敗・計測情報のない呼び出しは集計しません。",
+  "session.stats.usageDescription":
+    "推論とキャッシュを含むセッションの累計トークン数。キャッシュヒットは全入力に対するキャッシュ読取の割合です。現在のコンテキスト使用量とは異なります。",
+
   "desktop.menu.app": "OpenCode",
   "desktop.menu.file": "ファイル",
   "desktop.menu.edit": "編集",

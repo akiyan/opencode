@@ -155,6 +155,13 @@ export const SessionHandler = HttpApiBuilder.group(Api, "server.session", (handl
         }),
       )
       .handle(
+        "session.composerStats",
+        Effect.fn(function* (ctx) {
+          yield* session.get(ctx.params.sessionID).pipe(Effect.catchTag("Session.NotFoundError", missingSession))
+          return { data: yield* SessionStats.composer(ctx.params.sessionID) }
+        }),
+      )
+      .handle(
         "session.get",
         Effect.fn(function* (ctx) {
           return {

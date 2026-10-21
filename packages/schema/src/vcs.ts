@@ -11,6 +11,8 @@ export interface Branch extends Schema.Schema.Type<typeof Branch> {}
 
 export const Info = Schema.Struct({
   provider: optional(Schema.String),
+  /** Repository path only; never expose remote credentials or query parameters. */
+  repository: optional(Schema.String),
   branch: Branch,
 }).annotate({ identifier: "Vcs.Info" })
 export interface Info extends Schema.Schema.Type<typeof Info> {}
