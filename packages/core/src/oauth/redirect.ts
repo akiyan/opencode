@@ -28,9 +28,12 @@ export const submit =
  */
 export const pasted = (text: string, state: string) =>
   Effect.gen(function* () {
-    const value = text.trim()
-    if (!URL.canParse(value)) return yield* Effect.fail(new Error("Paste the full URL from the browser's address bar"))
-    const params = new URL(value).searchParams
+    const value = text.trim().split("#", 1)[0] ?? ""
+    if (!URL.canParse(value) && !value.includes("?") && !value.includes("="))
+      return yield* Effect.fail(new Error("Paste the full URL from the browser's address bar"))
+    const params = URL.canParse(value)
+      ? new URL(value).searchParams
+      : new URLSearchParams(value.slice(value.indexOf("?") + 1))
     if (params.get("state") !== state) return yield* Effect.fail(new Error("This URL belongs to a different sign-in"))
     const error = params.get("error_description") ?? params.get("error")
     if (error) return { params, error }

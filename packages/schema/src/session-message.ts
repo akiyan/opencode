@@ -241,6 +241,8 @@ export const Assistant = Schema.Struct({
     created: DateTimeUtcFromMillis,
     /** When the provider streamed the first output token, before the rest of the response. */
     firstToken: DateTimeUtcFromMillis.pipe(optional),
+    /** Legacy fork timing, retained when reading messages saved before firstToken was available. */
+    firstOutput: DateTimeUtcFromMillis.pipe(optional),
     /** When the provider response body ended, before tool settlement. */
     streamed: DateTimeUtcFromMillis.pipe(optional),
     completed: DateTimeUtcFromMillis.pipe(optional),

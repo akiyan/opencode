@@ -5,7 +5,7 @@ import { OpenAIResponses } from "@opencode/ai/protocols/openai-responses"
 import { ai, AIError, HttpContext, Message, RateLimitError } from "@opencode/ai/effect"
 import { classifyProviderFailure } from "@opencode/ai/route"
 import { compileRequest } from "@opencode/ai/testing"
-import { describe, expect } from "bun:test"
+import { describe, expect, spyOn } from "bun:test"
 // import { DateTime, Deferred, Effect, Schedule } from "effect"
 import { DateTime, Effect, Schedule } from "effect"
 import { HttpClient, HttpClientResponse } from "effect/http"
@@ -257,7 +257,11 @@ describe("ChatGPTPlugin", () => {
       yield* addPlugin()
       yield* addLegacyPlugin()
       const integrations = yield* Integration.Service
-      expect((yield* integrations.get(Integration.ID.make("openai")))?.methods.map((method) => method.type === "oauth" && method.id)).toEqual([
+      expect(
+        (yield* integrations.get(Integration.ID.make("openai")))?.methods.map(
+          (method) => method.type === "oauth" && method.id,
+        ),
+      ).toEqual([
         Integration.MethodID.make("chatgpt-token-sharing"),
         Integration.MethodID.make("chatgpt-browser"),
         Integration.MethodID.make("chatgpt-headless"),
@@ -422,6 +426,123 @@ describe("ChatGPTPlugin", () => {
       expect(redirect.hostname).toBe("127.0.0.1")
       expect(redirect.pathname).toBe("/auth/callback")
       expect(Number(redirect.port)).toBeGreaterThan(0)
+    }),
+  )
+
+  it.live("connects ChatGPT from pasted return URLs and queries using the original redirect and PKCE", () =>
+    Effect.gen(function* () {
+      yield* addPlugin()
+      const integrations = yield* Integration.Service
+      const credentials = yield* Credential.Service
+      const integrationID = Integration.ID.make("openai")
+      const keys = yield* Effect.promise(() => generateKeyPair("RS256"))
+      const publicKey = yield* Effect.promise(() => exportJWK(keys.publicKey))
+      for (const format of ["url", "query", "question", "no-scheme", "other-host"]) {
+        yield* Effect.scoped(
+          Effect.gen(function* () {
+            const attempt = yield* integrations.oauth.connect({
+              integrationID,
+              methodID: Integration.MethodID.make("chatgpt-token-sharing"),
+            })
+            expect(attempt.mode).toBe("auto")
+            expect(attempt.paste).toBe(true)
+            const authorization = new URL(attempt.url)
+            const redirect = authorization.searchParams.get("redirect_uri")!
+            const query = new URLSearchParams({
+              state: authorization.searchParams.get("state")!,
+              code: "one-use-code",
+              client_id: "oaiapp_issued",
+            }).toString()
+            const token = yield* Effect.promise(() =>
+              new SignJWT({ nonce: authorization.searchParams.get("nonce") })
+                .setProtectedHeader({ alg: "RS256", kid: "paste-sign-in" })
+                .setIssuer("https://auth.openai.com")
+                .setAudience("oaiapp_issued")
+                .setSubject("user_paste")
+                .setExpirationTime(Math.floor(Date.now() / 1000) + 3600)
+                .sign(keys.privateKey),
+            )
+            const requests: string[] = []
+            yield* Effect.acquireRelease(
+              Effect.sync(() =>
+                spyOn(globalThis, "fetch").mockImplementation(
+                  Object.assign(
+                    async (input: string | URL | Request, init?: RequestInit) => {
+                      const url = String(input)
+                      requests.push(url)
+                      if (url === "https://auth.openai.com/.well-known/jwks.json")
+                        return Response.json({
+                          keys: [{ ...publicKey, kid: "paste-sign-in", alg: "RS256", use: "sig" }],
+                        })
+                      expect(url).toBe("https://auth.openai.com/api/accounts/oauth/token")
+                      const body = new URLSearchParams(String(init?.body))
+                      expect(body.get("redirect_uri")).toBe(redirect)
+                      expect(body.get("code")).toBe("one-use-code")
+                      expect(body.get("client_id")).toBe("oaiapp_issued")
+                      expect(
+                        Buffer.from(
+                          await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body.get("code_verifier")!)),
+                        ).toString("base64url"),
+                      ).toBe(authorization.searchParams.get("code_challenge")!)
+                      return Response.json({
+                        access_token: "paste-access",
+                        refresh_token: "paste-refresh",
+                        id_token: token,
+                        expires_in: 3600,
+                        scope: "openid chatgpt.tokens.use.direct",
+                      })
+                    },
+                    { preconnect: fetch.preconnect },
+                  ),
+                ),
+              ),
+              (mock) => Effect.sync(() => mock.mockRestore()),
+            )
+            for (const invalid of [
+              "not a URL",
+              "code=secret",
+              "?state=wrong&code=secret",
+              `?state=${authorization.searchParams.get("state")}`,
+            ]) {
+              yield* integrations.oauth
+                .complete({ integrationID, attemptID: attempt.attemptID, code: invalid })
+                .pipe(Effect.flip)
+              expect((yield* integrations.oauth.status({ integrationID, attemptID: attempt.attemptID })).status).toBe(
+                "pending",
+              )
+            }
+            const value =
+              format === "url"
+                ? `${redirect}?${query}`
+                : format === "query"
+                  ? query
+                  : format === "question"
+                    ? `?${query}`
+                    : format === "no-scheme"
+                      ? `${redirect.slice(7)}?${query}`
+                      : `https://unused.example/return?${query}#fragment`
+            yield* integrations.oauth.complete({ integrationID, attemptID: attempt.attemptID, code: `  ${value}  ` })
+            const status = yield* integrations.oauth
+              .status({ integrationID, attemptID: attempt.attemptID })
+              .pipe(
+                Effect.repeat({
+                  while: (status) => status.status === "pending",
+                  schedule: Schedule.spaced("1 millis"),
+                }),
+              )
+            expect(status.status).toBe("complete")
+            const saved = (yield* credentials.list(integrationID)).at(-1)
+            expect(saved?.value).toMatchObject({
+              type: "oauth",
+              methodID: Integration.MethodID.make("chatgpt-token-sharing"),
+              access: "paste-access",
+              metadata: { clientID: "oaiapp_issued" },
+            })
+            yield* integrations.oauth.complete({ integrationID, attemptID: attempt.attemptID, code: value })
+            expect(requests.filter((url) => url.endsWith("/oauth/token"))).toHaveLength(1)
+          }),
+        )
+      }
     }),
   )
 
@@ -815,7 +936,12 @@ describe("ChatGPTPlugin", () => {
         "gpt-4.99",
       ])
         expect(yield* models.get(Provider.ID.openai, Model.ID.make(id))).toBeUndefined()
-      expect((yield* models.available()).filter((model) => model.providerID === Provider.ID.openai).map((model) => model.id).sort()).toEqual(
+      expect(
+        (yield* models.available())
+          .filter((model) => model.providerID === Provider.ID.openai)
+          .map((model) => model.id)
+          .sort(),
+      ).toEqual(
         [
           "gpt-5.5",
           "gpt-5.5-fast",

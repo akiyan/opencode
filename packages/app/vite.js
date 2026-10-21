@@ -85,6 +85,8 @@ const skipComponentsLab = {
 export const channel = (() => {
   const raw = process.env.OPENCODE_CHANNEL
 
+  if (raw === "akiyan") return "prod"
+
   if (raw === "local" || raw === "dev" || raw === "beta" || raw === "prod") return raw
 
   if (process.env.OPENCODE_CHANNEL === "latest") return "prod"
