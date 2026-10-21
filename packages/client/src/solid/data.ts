@@ -1276,12 +1276,18 @@ export function createData(config: CreateDataInput) {
       case "vcs.branch.updated":
         setStore("location", locationKey(location), (data) => ({
           vcs: {
+            ...data?.vcs,
             branch: {
               ...data?.vcs?.branch,
               current: event.data.branch,
             },
           },
         }))
+        // The first branch event may precede plugin activation and the initial VCS response.
+        if (!result.location.vcs.info(location)?.repository) {
+          result.location.vcs.invalidate(location)
+          refresh(() => result.location.vcs.sync(location))
+        }
         break
       case "form.created":
         if (store.session.form[event.data.form.sessionID]?.some((form) => form.id === event.data.form.id)) break

@@ -70,10 +70,11 @@ function make(proc: AppProcess.Interface, input: { directory: string; worktree: 
 
   return {
     info: Effect.fn("VcsGit.info")(function* () {
-      const [current, root] = yield* Effect.all([ctx.git.branch(ctx.directory), ctx.git.defaultBranch(ctx.directory)], {
-        concurrency: 2,
-      })
-      return { branch: { current, default: root?.name } } satisfies Info
+      const [current, root, repository] = yield* Effect.all(
+        [ctx.git.branch(ctx.directory), ctx.git.defaultBranch(ctx.directory), ctx.git.repository(ctx.directory)],
+        { concurrency: 3 },
+      )
+      return { branch: { current, default: root?.name }, repository } satisfies Info
     }),
     base: () => ctx.git.base(ctx.directory),
     branches: Effect.fn("VcsGit.branches")(function* (options?: BranchOptions) {
@@ -250,6 +251,19 @@ function makeGit(proc: AppProcess.Interface, env?: Record<string, string>) {
     if (list.length === 1) return list[0]
     if (list.includes("upstream")) return "upstream"
     return list[0]
+  })
+
+  const repository = Effect.fn("VcsGit.repository")(function* (cwd: string) {
+    const remote = yield* primary(cwd)
+    if (!remote) return
+    const url = (yield* text(["config", "--get", `remote.${remote}.url`], { cwd })).trim()
+    // Local filesystem remotes have no owner/repo identity.
+    const path = /^[a-z][a-z0-9+.-]*:\/\//i.test(url)
+      ? URL.parse(url)?.pathname
+      : /^(?:[^@/\s]+@)?[^:/\s]+:(.+)$/.exec(url)?.[1]
+    const name = path?.replace(/^\/+|\/+$/g, "").replace(/\.git$/, "")
+    if (!name || !/^[\w.-]+(?:\/[\w.-]+)+$/.test(name)) return
+    return name
   })
 
   const branch = Effect.fn("VcsGit.branch")(function* (cwd: string) {
@@ -507,6 +521,7 @@ function makeGit(proc: AppProcess.Interface, env?: Record<string, string>) {
   })
 
   return {
+    repository,
     branch,
     branches,
     base,
