@@ -221,7 +221,7 @@ function TurnRail(props: TurnNavigatorProps & { index?: Map<string, string>; roo
   // The pointer's clientY over the rail, and the rail's geometry from the last frame's read phase.
   let pointer: number | undefined
 
-  const rail = { top: 0, height: 0, root: 0, rootHeight: 0 }
+  const rail = { top: 0, height: 0, root: 0, rootHeight: 0, timelineWidth: 0 }
 
   // `position` follows the pointer in tick units and `wave` swells the ticks around it, so one pair drives every tick.
   const motion = {
@@ -281,6 +281,7 @@ function TurnRail(props: TurnNavigatorProps & { index?: Map<string, string>; roo
       card.style.transform = `translateY(${step(motion.top, dt)}px)`
       card.style.opacity = String(opacity)
       card.style.visibility = opacity === 0 ? "hidden" : "visible"
+      if (rail.timelineWidth > 0) card.style.maxWidth = `${rail.timelineWidth - 64}px`
     }
 
     return Object.values(motion).some((spring) => !spring.resting)
@@ -297,6 +298,8 @@ function TurnRail(props: TurnNavigatorProps & { index?: Map<string, string>; roo
         rail.height = box.height
         rail.root = root.top
         rail.rootHeight = root.height
+        // The card is positioned in the narrow rail, so it measures the timeline beside it for its width cap.
+        rail.timelineWidth = props.root.parentElement?.clientWidth ?? 0
       },
       (dt) => {
         if (paint(dt)) return true
@@ -377,7 +380,7 @@ function TurnRail(props: TurnNavigatorProps & { index?: Map<string, string>; roo
       <div
         ref={card}
         data-slot="session-turn-navigator-preview"
-        class="pointer-events-none invisible absolute start-12 top-0 w-[384px] max-w-[calc(100%-4rem)] rounded-lg bg-v2-background-bg-base p-3 opacity-0"
+        class="pointer-events-none invisible absolute start-12 top-0 w-[384px] rounded-lg bg-v2-background-bg-base p-3 opacity-0"
         style={{ "box-shadow": "var(--v2-elevation-raised)" }}
       >
         <Show when={preview()}>
